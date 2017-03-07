@@ -1066,17 +1066,6 @@ handle_event({send_bin, Binary}, StateName,
              #connection{} = Conn) ->
     socksend(Conn, Binary),
     {next_state, StateName, Conn};
-handle_event({send_ping, NotifyPid}, StateName,
-             #connection{pings = Pings} = Conn) ->
-    PingValue = crypto:strong_rand_bytes(8),
-    Frame = h2_frame_ping:new(PingValue),
-    Headers = #frame_header{stream_id = 0, flags = 16#0},
-    Binary = h2_frame:to_binary({Headers, Frame}),
-    socksend(Conn, Binary),
-
-    NextPings = maps:put(PingValue, {NotifyPid, erlang:monotonic_time(milli_seconds)}, Pings),
-    NextConn = Conn#connection{pings = NextPings},
-    {next_state, StateName, NextConn};
 handle_event({send_frame, Frame}, StateName,
              #connection{} =Conn) ->
     Binary = h2_frame:to_binary(Frame),
@@ -1186,6 +1175,18 @@ handle_sync_event({send_request, NotifyPid, Headers, Body}, _F,
         {error, Code} ->
             {reply, {error, Code}, StateName, Conn}
     end;
+handle_sync_event({send_ping, NotifyPid}, _F,
+        StateName,
+        #connection{pings = Pings} = Conn) ->
+    PingValue = crypto:strong_rand_bytes(8),
+    Frame = h2_frame_ping:new(PingValue),
+    Headers = #frame_header{stream_id = 0, flags = 16#0},
+    Binary = h2_frame:to_binary({Headers, Frame}),
+    socksend(Conn, Binary),
+
+    NextPings = maps:put(PingValue, {NotifyPid, erlang:monotonic_time(milli_seconds)}, Pings),
+    NextConn = Conn#connection{pings = NextPings},
+    {next_state, StateName, NextConn};
 handle_sync_event(_E, _F, StateName,
                   #connection{}=Conn) ->
     {next_state, StateName, Conn}.
