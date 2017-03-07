@@ -759,7 +759,7 @@ route_frame({H, Payload},
             #connection{pings = Pings}=Conn)
     when H#frame_header.type == ?PING,
          ?IS_FLAG((H#frame_header.flags), ?FLAG_ACK) ->
-    case maps:get(Payload, Pings, undefined) of
+    case maps:get(h2_frame_ping:to_binary(Payload), Pings, undefined) of
         undefined ->
             lager:debug("[~p] Received unknown PING ACK",
                         [Conn#connection.type]);
